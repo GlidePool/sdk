@@ -1,0 +1,26 @@
+{
+  "name": "@glide-pool/sdk",
+  "version": "0.1.0",
+  "description": "JavaScript SDK for the GlidePool autonomous DLMM agent API on Base Mainnet",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    }
+  },
+  "types": "./src/index.d.ts",
+  "files": ["src", "README.md"],
+  "keywords": ["glidepool", "dlmm", "maverick", "base", "defi", "liquidity", "agent", "x402"],
+  "author": "glide-pool",
+  "license": "MIT",
+  "engines": { "node": ">=18" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/glide-pool/glidepool"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
