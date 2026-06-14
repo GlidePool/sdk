@@ -1,8 +1,6 @@
 # @glide-pool/sdk
 
-JavaScript and TypeScript SDK for the GlidePool autonomous DLMM agent API on Base Mainnet.
-
-Zero runtime dependencies. Uses native `fetch` (Node.js 18+). Full TypeScript declarations included.
+JavaScript SDK for the [GlidePool](https://github.com/GlidePool/glidepool) autonomous DLMM agent API on Base Mainnet.
 
 ## Installation
 
@@ -21,6 +19,7 @@ const client = new GlidePoolClient({
 
 // List live Maverick V2 pools
 const pools = await client.listPools();
+console.log(pools);
 // [{ poolAddress, tokenASymbol, tokenBSymbol, tvlUsd, currentPrice, feeRate, ... }]
 
 // Create an autonomous agent
@@ -31,12 +30,12 @@ const agent = await client.createAgent({
   budgetUsdc: 100,
   analysisIntervalSec: 60,
 });
-// Agent loop starts immediately on the server
+console.log(agent.id); // UUID — agent loop starts immediately on the server
 
 // Check LLM decisions
 const actions = await client.getAgentActions(agent.id);
-// actionType: 'hold' | 'rebalance' | 'withdraw' | 'add_liquidity' | 'switch_mode'
-// llmReasoning: Claude Opus 4 full reasoning text
+console.log(actions[0].actionType);    // 'hold' | 'rebalance' | 'withdraw' ...
+console.log(actions[0].llmReasoning);  // Claude Opus 4 reasoning text
 ```
 
 ## API Reference
@@ -49,15 +48,24 @@ const client = new GlidePoolClient({ apiUrl: 'https://...' });
 
 | Option | Type | Required | Description |
 |---|---|---|---|
-| `apiUrl` | `string` | yes | Base URL of your GlidePool API server |
+| `apiUrl` | `string` | ✅ | Base URL of your GlidePool API server |
+
+---
 
 ### Pools
 
 #### `client.listPools()`
 Returns all supported Maverick V2 pools with live TVL, price, and fee rate from Base Mainnet.
 
+```js
+const pools = await client.listPools();
+// Pool[] — see types
+```
+
 #### `client.getPool(poolAddress)`
 Get details for a specific pool by contract address.
+
+---
 
 ### Agents
 
@@ -65,40 +73,33 @@ Get details for a specific pool by contract address.
 
 | Param | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `userAddress` | `string` | yes | | Wallet address that owns the agent |
-| `poolAddress` | `string` | yes | | Maverick V2 pool to monitor |
-| `strategy` | `string` | yes | | `conservative`, `balanced`, or `aggressive` |
-| `budgetUsdc` | `number` | yes | | Max USDC budget |
-| `analysisIntervalSec` | `number` | no | 60 | LLM analysis frequency in seconds (min 30) |
+| `userAddress` | `string` | ✅ | — | Wallet address that owns the agent |
+| `poolAddress` | `string` | ✅ | — | Maverick V2 pool to monitor |
+| `strategy` | `string` | ✅ | — | `'conservative'` \| `'balanced'` \| `'aggressive'` |
+| `budgetUsdc` | `number` | ✅ | — | Max USDC budget for liquidity operations |
+| `analysisIntervalSec` | `number` | ❌ | `60` | LLM analysis frequency in seconds (min: 30) |
 
 #### `client.listAgents(userAddress)`
-List all agents for a wallet address.
+List all agents for a wallet.
 
 #### `client.getAgent(agentId)`
 Get a single agent by UUID.
 
-#### `client.pauseAgent(agentId)`
-Pause a running agent. Analysis loop stops until resumed.
-
-#### `client.resumeAgent(agentId)`
-Resume a paused agent.
-
-#### `client.stopAgent(agentId)`
-Stop an agent permanently.
+#### `client.pauseAgent(agentId)` / `resumeAgent(agentId)` / `stopAgent(agentId)`
+Control agent lifecycle. `stop` is permanent.
 
 #### `client.getAgentActions(agentId, limit?)`
-Get LLM decisions stored in the database. Each action has:
-
-| Field | Type | Description |
-|---|---|---|
-| `actionType` | `string` | `hold`, `rebalance`, `withdraw`, `add_liquidity`, `switch_mode` |
-| `status` | `string` | `completed`, `pending_signature`, `signed`, `failed` |
-| `llmReasoning` | `string` | Full Claude Opus 4 reasoning text |
-| `llmRecommendation` | `object` | Structured recommendation with `riskLevel`, `suggestedBinRange`, `suggestedWithdrawPercent` |
-| `txHash` | `string` | Set after user signs and confirms on-chain |
+Get LLM decisions stored in the database. Each entry has:
+- `actionType` — `hold` | `rebalance` | `withdraw` | `add_liquidity` | `switch_mode`
+- `status` — `completed` | `pending_signature` | `signed` | `failed`
+- `llmReasoning` — Full Claude Opus 4 reasoning text
+- `llmRecommendation` — Structured recommendation with `riskLevel`, `suggestedBinRange`, etc.
+- `txHash` — Set after user signs and confirms
 
 #### `client.confirmAgentAction(agentId, actionId, txHash)`
-After signing a `pending_signature` action in your wallet, submit the transaction hash to mark it confirmed.
+After signing a `pending_signature` action in your wallet, submit the tx hash.
+
+---
 
 ### Positions
 
@@ -107,24 +108,26 @@ List all Maverick V2 NFT-based LP positions for a wallet on Base Mainnet.
 
 Returns `valueUsd`, `amountA`, `amountB`, `binCount`, `nftId`, and token symbols.
 
-### Advisor
+---
+
+### Advisor (x402 gated)
 
 #### `client.getAdvice(params)`
 
 ```js
 const advice = await client.getAdvice({
-  poolAddress: '0x3d70b2f31f75dc84acdd5e1588695221959b2d37',
+  poolAddress: '0x3d70...',
   userGoal: 'maximize fee income with minimal impermanent loss',
-  nftId: '123',         // optional: analyze existing position
-  paymentProof: '...',  // required if server has X402_ENABLED=true
+  // nftId: '123',        // optional: analyze existing position
+  // paymentProof: '...',  // required if server has X402_ENABLED=true
 });
 
-console.log(advice.recommendation.action);  // 'hold' | 'rebalance' | ...
-console.log(advice.riskLevel);              // 'low' | 'medium' | 'high'
-console.log(advice.summary);               // human-readable summary
+console.log(advice.recommendation.action);   // 'hold' | 'rebalance' | ...
+console.log(advice.riskLevel);               // 'low' | 'medium' | 'high'
+console.log(advice.summary);                 // Human-readable summary
 ```
 
-**x402 payments:** If `X402_ENABLED=true` on the server, calls to this method throw with `status: 402` and include `recipient`, `amount`, `token`, and `network` in `err.data`. Send 0.05 USDC to `recipient` on Base, then encode the proof:
+**x402 micropayments:** If `X402_ENABLED=true` on the server, the call will throw with `status: 402` and include `recipient`, `amount`, `token`, and `network` in `err.data`. Send 0.05 USDC to `recipient` on Base, then encode the proof:
 
 ```js
 const proof = Buffer.from(JSON.stringify({
@@ -136,13 +139,17 @@ const proof = Buffer.from(JSON.stringify({
 const advice = await client.getAdvice({ poolAddress, userGoal, paymentProof: proof });
 ```
 
+---
+
 ### Liquidity
 
 #### `client.getRemoveParams(params)`
-Compute remove-liquidity calldata for a position. Returns `binIds` and estimated token amounts. The API server never signs transactions.
+Compute remove-liquidity calldata for a position. Returns `binIds`, estimated token amounts. **You sign the transaction — the server never holds your keys.**
 
 #### `client.getAddParams(params)`
 Compute add-liquidity calldata for a pool. Returns encoded calldata for the `addLiquidity` transaction.
+
+---
 
 ## Strategies
 
@@ -150,13 +157,13 @@ Compute add-liquidity calldata for a pool. Returns encoded calldata for the `add
 |---|---|---|
 | `conservative` | Static | Tight fixed bin range, low risk, suited for stable pairs |
 | `balanced` | Both | Follows price in both directions, medium risk |
-| `aggressive` | Right or Left | Follows price trend, higher exposure |
+| `aggressive` | Right/Left | Follows price trend, higher exposure |
 
-Claude Opus 4 analyzes pool state on each agent cycle and may override the configured strategy when conditions warrant caution.
+Claude Opus 4 analyzes pool state each cycle and may override the strategy when conditions warrant caution.
 
 ## TypeScript
 
-Full type declarations are included:
+Full TypeScript types are included:
 
 ```ts
 import { GlidePoolClient, Agent, Pool, AgentAction, Advice } from '@glide-pool/sdk';
@@ -164,7 +171,7 @@ import { GlidePoolClient, Agent, Pool, AgentAction, Advice } from '@glide-pool/s
 
 ## Requirements
 
-- Node.js 18 or later (uses native `fetch`)
+- Node.js >= 18 (uses native `fetch`)
 - A running GlidePool API server
 
 ## License

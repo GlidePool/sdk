@@ -14,7 +14,7 @@ export class GlidePoolClient {
    * @param {string} options.apiUrl - Base URL of your GlidePool API server (no trailing slash)
    */
   constructor({ apiUrl } = {}) {
-    if (!apiUrl) throw new Error('GlidePoolClient requires { apiUrl } — e.g. https://your-glidepool.replit.app');
+    if (!apiUrl) throw new Error('GlidePoolClient requires { apiUrl } — e.g. https://api.glidepool.xyz');
     this.apiUrl = apiUrl.replace(/\/$/, '');
   }
 
